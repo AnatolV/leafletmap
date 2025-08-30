@@ -1,0 +1,99 @@
+
+.map-modal__sidebar {
+    position: relative;
+    width: 30%;
+    padding: 10px;
+    height: 100%;
+}
+
+.map-modal__title {
+    margin-bottom: 10px;
+    font-size: .9em;
+}
+
+.map-modal__divider {}
+
+.scrolled::-webkit-scrollbar {
+    width: 10px;
+    background-color: #e4f3e8
+}
+
+.scrolled::-webkit-scrollbar-thumb {
+    border: 1px solid #bdbdbd;
+    border-radius: 10px;
+    background-color: #e4f3e8
+}
+
+.scrolled::-webkit-scrollbar-track {
+    border-radius: 10px;
+    background-color: #fff
+}
+
+.map-modal__content {
+    width: 70%;
+    height: 100%;
+}
+
+.map-modal__list {
+    padding: 4px 0 0 8px;
+    list-style: none;
+}
+
+.scrolled {
+    height: 85%;
+    padding-right: 5px;
+    padding-left: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.map-modal__list-block {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 5px;
+    border: 2px solid #002aff;
+    background-color: #def0cc;
+}
+
+.map-modal__list-block--opener {
+    position: relative;
+    display: inline-block;
+    width: 2em;
+    height: 1.4em;
+}
+
+.map-modal__list-block--opener:before {
+    font-size: 2em;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    content: "+";
+    transform: translate(-50%, -50%);
+}
+
+.map-modal__list-item {
+    font-size: 95%;
+    line-height: 1;
+    padding: 4px 0 0;
+    cursor: pointer;
+}
+
+.map-modal__list-item.active > .map-modal__list-block {
+    border: 2px solid #fe0000;
+}
+
+.city, .point {
+    display: none;
+    height: 0;
+}
+
+.region.active .city {
+    display: block;
+    height: auto;
+}
+
+.city.active .point {
+    display: flex;
+    height: auto;
+}
