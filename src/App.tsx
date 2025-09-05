@@ -1,73 +1,35 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import reactLogo from './assets/react.svg'
+import viteLogo from '/vite.svg'
 import './App.css'
-import type {IMapLocation} from "./lib/types.js";
-import LeafletMap from "./components/LeafletMap/LeafletMap";
-import {Button} from "./components/Button/Button";
-
-
 
 function App() {
-  const [locations, setLocations] = useState<IMapLocation | null>(null);
-  const [leaflet, setLeaflet] = useState(false);
-  const [opened, setOpened] = useState(false);
-
-  useEffect(() => {
-    // Логіка завантаження ресурсів буде виконана, тільки якщо `opened` true
-    if (opened && !leaflet) {
-      const loadResources = async () => {
-        try {
-          // Завантаження даних з JSON-файлу
-          const response = await fetch('/data/location.json');
-          const data = await response.json();
-          setLocations(data);
-
-          // Динамічне завантаження CSS-стилів Leaflet
-          const link = document.createElement('link');
-          link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-          link.rel = 'stylesheet';
-          link.integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=";
-          link.crossOrigin="";
-          document.head.appendChild(link);
-          link.onload = () => {
-            setLeaflet(true);
-          };
-
-        } catch (error) {
-          console.error("Помилка завантаження ресурсів:", error);
-        }
-      };
-      loadResources();
-    }
-
-  }, [opened,leaflet]);
-  const getLanguage = () => {
-    const url = window.location.href;
-    return url.includes('/ru/') ? 'ru' : 'ua';
-  };
-  const isUa = getLanguage() === 'ua';
-
-  const handleOpen = () => {
-    setOpened(true);
-  };
-
-  const handleClose = () => {
-    setOpened(false);
-  };
+  const [count, setCount] = useState(0)
 
   return (
-      <>
-        {opened && (
-            <>
-              <div className="map-overlay" onClick={handleClose}></div>
-              <div className="map-modal">
-                <div className="map-modal__close" onClick={handleClose}>x</div>
-                <LeafletMap locations={locations} handleClose={handleClose} isUa={isUa}/>
-              </div>
-            </>
-        )}
-        <Button isUa={isUa} handleOpen={handleOpen}/>
-      </>
-  );
+    <>
+      <div>
+        <a href="https://vite.dev" target="_blank">
+          <img src={viteLogo} className="logo" alt="Vite logo" />
+        </a>
+        <a href="https://react.dev" target="_blank">
+          <img src={reactLogo} className="logo react" alt="React logo" />
+        </a>
+      </div>
+      <h1>Vite + React</h1>
+      <div className="card">
+        <button onClick={() => setCount((count) => count + 1)}>
+          count is {count}
+        </button>
+        <p>
+          Edit <code>src/App.tsx</code> and save to test HMR
+        </p>
+      </div>
+      <p className="read-the-docs">
+        Click on the Vite and React logos to learn more
+      </p>
+    </>
+  )
 }
 
-export default App;
+export default App

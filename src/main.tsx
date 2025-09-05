@@ -1,10 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App'
+import {LeafletMap} from "./lib";
 
-createRoot(document.getElementById('leafletMap')!).render(
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <LeafletMap locale={'uk'} tileProvider={'visicom'} addressesUrl={'/data/location.json'}/>
   </StrictMode>,
 )

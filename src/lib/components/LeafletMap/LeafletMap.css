@@ -1,0 +1,57 @@
+.map-overlay {
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    width: 120%;
+    height: 120%;
+    opacity: .7;
+    background: #000;
+}
+.map-modal {
+    z-index: 2;
+    overflow-x: hidden;
+    border-radius: 3px;
+    background: #fff;
+    -ms-box-shadow: 0 0 10px rgba(35,31,32,.25);
+    -o-box-shadow: 0 0 10px rgba(35,31,32,.25);
+    box-shadow: 0 0 10px rgba(35, 31, 32, .25);
+    font-size: 14px;
+    position: fixed;
+    top: 10%;
+    left: 5%;
+    overflow: inherit;
+    width: 90%;
+    height: 70%;
+    display: flex;
+}
+.map-modal__close{
+    font-size: 0;
+    position: absolute;
+    z-index: 401;
+    top: -20px;
+    right: -20px;
+    box-sizing: border-box;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    transition: all .3s;
+    transform: rotate(45deg);
+    color: transparent;
+    border: 2px solid rgba(255, 255, 255, .4);
+    border-radius: 50%;
+    outline: 0;
+    background-color: #291733;
+}
+.map-modal__close:after, .map-modal__close:before {
+    position: absolute;
+    top: 16px;
+    left: 5px;
+    width: 26px;
+    height: 3px;
+    content: "";
+    background-color: #fff;
+}
+.map-modal__close:after {
+    transform: rotate(90deg);
+}

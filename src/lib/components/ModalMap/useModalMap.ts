@@ -1,10 +1,5 @@
-// Компонент приймає JSON locations, мову.
-// З locations формуємо кінцеві адреси для маркерів карти та активний ланцюг для списку
-// багаторівневе дерево адрес по містах та регіонах.
-// Коли клік на маркері, відкриваємо ланцюг адреса-місто-регіон, центруємо на адресі
-// коли клік на місто, центрування на вкладених адресах,
-// коли клік на регіоні, центрування на вкладених містах
-
+// src/app/map/_components/ModalMap/useModalMap.ts
+import {useEffect, useRef, useState} from "react";
 import L, {
     type LatLngBoundsExpression,
     type LatLngBoundsLiteral,
@@ -13,19 +8,10 @@ import L, {
     Map,
     type MapOptions
 } from "leaflet";
-import type {ICity, IMapLocation, IRegion, LangType} from "../../lib/types";
-import {useEffect, useRef, useState} from "react";
-import "./LeafletMap.css"
-import place from "../../assets/place.svg";
-import selectedPlace from "../../assets/place_selected.svg";
-import LocationList from "./LocationList.tsx";
-import {getCoordinates} from "../../utils/getCoordinates.ts";
-
-interface ILeafletMap {
-    locations: IMapLocation | null;
-    handleClose: () => void;
-    isUa: boolean;
-}
+import place from "../../../../public/images/place.svg";
+import selectedPlace from "../../../../public/images/place_selected.svg";
+import type {TBounds, TModalMapProps} from "./ModalMap.types.ts";
+import type {IAddresses} from "../LeafletMap/LeafletMap.types.ts";
 
 function createIcon(url: string) {
     return L.icon({
@@ -36,8 +22,31 @@ function createIcon(url: string) {
     });
 }
 
-export default function LeafletMap(props: ILeafletMap) {
-    const {locations, isUa} = props;
+/**
+ * Об'єднує два набори граничних координат в один, який охоплює обидва.
+ * @param currentBounds - Поточні загальні координати.
+ * @param newBounds - Нові координати, які потрібно додати.
+ * @returns - Новий, об'єднаний набір координат.
+ */
+const mergeBounds = (currentBounds: TBounds | null, newBounds: TBounds): TBounds => {
+    if (!currentBounds) {
+        return newBounds; // Если общих координат еще нет, возвращаем новые
+    }
+
+    const southWest: LatLngTuple = [
+        Math.min(currentBounds.southWest[0], newBounds.southWest[0]), // min lat
+        Math.min(currentBounds.southWest[1], newBounds.southWest[1]), // min lng
+    ];
+
+    const northEast: LatLngTuple = [
+        Math.max(currentBounds.northEast[0], newBounds.northEast[0]), // max lat
+        Math.max(currentBounds.northEast[1], newBounds.northEast[1]), // max lng
+    ];
+
+    return {southWest, northEast};
+};
+export default function useModalMap(props: TModalMapProps) {
+    const {locations, locale, tileProvider} = props;
     // активний ключ списку та маркера (ключи в об'єкті locations)
     const [activeKey, setActiveKey] = useState('');
     // Мапа
@@ -49,17 +58,16 @@ export default function LeafletMap(props: ILeafletMap) {
     // об'єкт елементів для можливості розкриття списку
     const itemRefs = useRef<{ [key: string]: HTMLLIElement }>({});
 
-    const lang: LangType = props.isUa ? "ua" : 'ru';
     const tileUrl = {
         "wikimedia": {
-            url: `https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png?lang=${isUa ? 'uk' : 'ru'}`,
+            url: `https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png?locale=${locale}`,
             options: {
                 maxZoom: 18,
                 attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, tiles &copy; <a href="https://wikimediafoundation.org/wiki/Maps_Terms_of_Use">Wikimedia Maps</a>'
             }
         },
         "visicom": {
-            url: `https://tms{s}.visicom.ua/2.0.0/world,ua/${isUa ? 'base' : 'base_ru'}/{z}/{x}/{y}.png`,
+            url: `https://tms{s}.visicom.ua/2.0.0/world,ua/${locale === 'ru' ? 'base_ru' : 'base'}/{z}/{x}/{y}.png`,
             options: {
                 attribution: "Дані карт © 2025 АТ «<a href='https://api.visicom.ua/'>Визіком</a>»",
                 subdomains: "123",
@@ -80,7 +88,7 @@ export default function LeafletMap(props: ILeafletMap) {
 
         if (!mapRef.current) {
             map = L.map("innermap").setView(mapCenter, zoom, options);
-            L.tileLayer(tileUrl.visicom.url, tileUrl.visicom.options).addTo(map);
+            L.tileLayer(tileUrl[tileProvider].url, tileUrl[tileProvider].options).addTo(map);
             mapRef.current = map;
         } else {
             map = mapRef.current;
@@ -93,73 +101,89 @@ export default function LeafletMap(props: ILeafletMap) {
             markersRef.current = {};
         }
 
+
+// Очищаємо тимчасові сховища перед запуском
         const tempMarkers: { [key: string]: L.Marker } = {};
         const tempListRef: { [key: string]: LatLngBoundsLiteral } = {};
-        let southWest: LatLngTuple = [0, 0];
-        let northEast: LatLngTuple = [0, 0];
-        for (const regionId in locations) {
-            let regionSouthWest: LatLngTuple = [0, 0];
-            let regionNorthEast: LatLngTuple = [0, 0];
-            const region = locations[regionId] as IRegion;
-            for (const cityId in region.cities) {
-                let citySouthWest: LatLngTuple = [0, 0];
-                let cityNorthEast: LatLngTuple = [0, 0];
-                const city :ICity = region.cities[cityId];
-                for (const zip in city.points) {
-                    const point = city.points[zip];
-                    const pointName = `Пункт ${zip} ${point.name[lang]}`;
-                    const lat = parseFloat(point.location.lat);
-                    const lng = parseFloat(point.location.lng);
-                    // область отрисовки адресов города
-                    const cityCoordinates = getCoordinates(lat, lng, {
-                        southWest: citySouthWest,
-                        northEast: cityNorthEast
-                    })
-                    citySouthWest = cityCoordinates.southWest;
-                    cityNorthEast = cityCoordinates.northEast;
+        const processItems = (items: IAddresses): TBounds | null => {
+            if (!items) return null;
 
-                    // область отрисовки адресов региона
-                    const regionCoordinates = getCoordinates(lat, lng, {
-                        southWest: regionSouthWest,
-                        northEast: regionNorthEast
-                    })
-                    regionSouthWest = regionCoordinates.southWest;
-                    regionNorthEast = regionCoordinates.northEast;
-                    // область отрисовки для всей карты
-                    const coordinates = getCoordinates(lat, lng, {southWest, northEast})
-                    southWest = coordinates.southWest;
-                    northEast = coordinates.northEast;
+            // Локальні граничні координати для поточного рівня вкладеності (для всіх items)
+            let levelBounds: TBounds | null = null;
+
+            for (const id of Object.keys(items)) {
+                const item = items[id];
+                const children = item.list;
+
+                if (!children && item.location) {
+                    // Рівень 3: Відділення (базовий випадок рекурсії)
+                    const lat = parseFloat(item.location.lat);
+                    const lng = parseFloat(item.location.lng);
+
+                    // Межі для однієї точки – це сама точка
+                    const itemBounds: TBounds = {
+                        southWest: [lat, lng],
+                        northEast: [lat, lng],
+                    };
+
+                    // Об'єднуємо координати цієї точки із загальними координатами поточного рівня
+                    levelBounds = mergeBounds(levelBounds, itemBounds);
+
+                    const name = `Пункт ${id} ${item.name[locale]}`;
                     const location: LatLngExpression = [lat, lng];
                     const marker = L.marker(location, {
                         icon: createIcon(place),
-                        alt: zip,
                     }).addTo(map);
 
-                    marker.bindPopup(pointName);
-                    tempMarkers[zip] = marker;
+                    marker.bindPopup(name);
+                    tempMarkers[id] = marker;
+                    marker.on('click', () => setActiveKey(id));
 
-                    marker.on('click', () => {
-                        setActiveKey(zip);
-                    });
+                } else if (children) {
+                    // Рівень 1 або 2: Регіон або Місто (рекурсивний випадок)
+
+                    // 1. Рекурсивно викликаємо функцію для дочірніх елементів
+                    const childBounds = processItems(children);
+
+                    if (childBounds) {
+                        // 2. Сохраняем вычисленные границы для этого дочернего элемента (города или региона)
+                        tempListRef[id] = [childBounds.northEast, childBounds.southWest];
+
+                        // 3. Об'єднуємо межі цієї child із загальними межами поточного рівня
+                        levelBounds = mergeBounds(levelBounds, childBounds);
+                    }
                 }
-                // по ключу списка городов получим область отрисовки в пределах города
-                tempListRef[cityId] = [cityNorthEast, citySouthWest];
             }
-            // по ключу списка региона получим область отрисовки адресов всех городов региона
-            tempListRef[regionId] = [regionNorthEast, regionSouthWest];
+
+            // Повертаємо об'єднані кордони для всіх елементів на цьому рівні
+            return levelBounds;
+        };
+
+        const globalBounds = processItems(locations);
+
+// 1. GlobalBounds - загальні межі всім відділень.
+// 2. tempListRef - об'єкт, де кожного ключа регіону чи міста зберігаються його власні граничні координати.
+        if (globalBounds) {
+            console.log("Глобальные граничные координаты:", globalBounds);
+            // Наприклад, можна відцентрувати карту за цими координатами
+            // map.fitBounds([globalBounds.southWest, globalBounds.northEast]);
         }
+        console.log("Граничные координаты по уровням:", tempListRef);
         markersRef.current = tempMarkers;
         boundsRef.current = tempListRef;
-        const bounds = new L.LatLngBounds(southWest, northEast);
-        mapRef.current.fitBounds(bounds);
+        if (globalBounds) {
+            const bounds = new L.LatLngBounds(globalBounds.northEast, globalBounds.southWest);
+            mapRef.current.fitBounds(bounds);
+        }
+
         return () => {
             if (mapRef.current) {
                 mapRef.current.remove();
                 mapRef.current = null;
             }
         };
-    }, [locations, isUa]);
-    const levels = ['point', 'city', 'region'];
+    }, [locations, locale, tileProvider]);
+    const levels = ['level_3', 'level_2', 'level_1'];
     // розкриття та стилізація вкладених елементів
     const activateLinks = (li: Element, level: string) => {
         // Додаємо клас active до поточного елемента
@@ -171,7 +195,6 @@ export default function LeafletMap(props: ILeafletMap) {
         if (levelIndex < levels.length - 1) {
             const nextLevel = levels[levelIndex + 1];
             const nextLi = li.closest(`.map-modal__list-item.${nextLevel}`);
-
             if (nextLi) {
                 activateLinks(nextLi, nextLevel);
             }
@@ -182,11 +205,9 @@ export default function LeafletMap(props: ILeafletMap) {
         // При повторному кліку згортаємо / розгортаємо список
         if (key === activeKey) {
             const li = (itemRefs.current[activeKey] as Element).closest('.map-modal__list-item');
-            if(li){
+            if (li) {
                 li.classList.toggle('active');
             }
-
-
         }
         setActiveKey(key);
     };
@@ -233,31 +254,13 @@ export default function LeafletMap(props: ILeafletMap) {
             const foundLevel = levels.find(level => li.classList.contains(level));
 
             if (foundLevel) {
-                activateLinks(li, foundLevel as 'point' | 'city' | 'region')
+                activateLinks(li, foundLevel as 'level_1' | 'level_2' | 'level_3')
                     .scrollIntoView({block: "end", inline: "nearest", behavior: "smooth"});
             }
         }
     }, [activeKey]);
-
-    if (!locations) {
-        return <div id="innermap" className="map-modal__content"></div>;
-    }
-
-    return (
-        <>
-            <div className="map-modal__sidebar">
-                <p className="map-modal__title">{isUa ? 'Список відділень' : 'Список отделений'}</p>
-                <hr className="map-modal__divider"/>
-                <ul className="map-modal__list scrolled">
-                    <LocationList
-                        locations={locations}
-                        lang={lang}
-                        itemClickHandler={itemClickHandler}
-                        itemsRefs={itemRefs}
-                    />
-                </ul>
-            </div>
-            <div id="innermap" className="map-modal__content"></div>
-        </>
-    );
+    return {
+        itemClickHandler,
+        itemRefs
+    };
 }
