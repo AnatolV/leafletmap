@@ -8,8 +8,8 @@ import L, {
     Map,
     type MapOptions
 } from "leaflet";
-import place from "../../../../public/images/place.svg";
-import selectedPlace from "../../../../public/images/place_selected.svg";
+import place from "../../../assets/images/place.svg";
+import selectedPlace from "../../../assets/images/place_selected.svg";
 import type {TBounds, TModalMapProps} from "./ModalMap.types.ts";
 import type {IAddresses} from "../LeafletMap/LeafletMap.types.ts";
 
